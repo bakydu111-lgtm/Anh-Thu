@@ -2,9 +2,14 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title> 1 ĐOẠN CODE NHỎ CHO BÉ </title>
+    <title>PHÁO HOA NGHỆ THUẬT</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Arial', sans-serif; }
+        body { 
+            margin: 0; 
+            background: #000; 
+            overflow: hidden; 
+            font-family: 'Arial', sans-serif; 
+        }
         canvas { display: block; }
 
         #text-container {
@@ -16,25 +21,18 @@
             text-align: center;
             pointer-events: none;
             z-index: 10;
-            width: 100%;
         }
 
         h1 {
-            font-size: 40px;
+            font-size: 40px; 
             margin: 0;
             text-transform: uppercase;
             letter-spacing: 5px;
             text-shadow: 0 0 10px #fff, 0 0 20px #ff00de;
-            /* Hiệu ứng chuyển mượt khi đổi chữ */
-            transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+            transition: opacity 1s ease-in-out;
             opacity: 0;
         }
-
-        /* Lớp dùng để hiện chữ */
-        .show {
-            opacity: 1;
-            transform: scale(1.1);
-        }
+        .show { opacity: 1; }
     </style>
 </head>
 <body>
@@ -46,40 +44,6 @@
     <canvas id="cvs"></canvas>
 
 <script>
-    // --- PHẦN 1: QUẢN LÝ NỘI DUNG CHỮ ---
-    const texts = [
-        "Happy New Year 2026",
-        "Chúc Mừng Năm Mới Cục Dàng Của Tôyyy",
-        "1 năm mới An Khang Thịnh Vượng",
-        "Vạn Sự Như Ý",
-        "so love"
-    ];
-    
-    let currentIndex = 0;
-    const textElement = document.getElementById('changing-text');
-
-    function changeText() {
-        // Bước 1: Cho chữ mờ đi
-        textElement.classList.remove('show');
-        
-        setTimeout(() => {
-            // Bước 2: Đổi nội dung chữ
-            textElement.innerHTML = texts[currentIndex];
-            // Bước 3: Cho chữ hiện lên
-            textElement.classList.add('show');
-            
-            // Tăng index để lấy chữ tiếp theo
-            currentIndex = (currentIndex + 1) % texts.length;
-        }, 1000); // Đợi 1s cho chữ cũ mờ hẳn rồi mới đổi
-    }
-
-    // Chạy đổi chữ lần đầu
-    changeText();
-    // Cứ mỗi 4 giây sẽ đổi chữ một lần
-    setInterval(changeText, 4000);
-
-
-    // --- PHẦN 2: CODE PHÁO HOA (GIỮ NGUYÊN TỐC ĐỘ CHẬM) ---
     const canvas = document.getElementById('cvs');
     const ctx = canvas.getContext('2d');
     let fw = [];
@@ -91,32 +55,38 @@
     window.addEventListener('resize', resize);
     resize();
 
+    // Hạt pháo hoa với hiệu ứng kéo vệt
     class Particle {
-        constructor(x, y, color) {
-            this.x = x; this.y = y; this.color = color;
+        constructor(x, y, color, velocity) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.velocity = velocity;
             this.alpha = 1;
-            this.friction = 0.96;
-            this.gravity = 0.12;
-            this.v = { 
-                x: (Math.random() - 0.5) * 8, 
-                y: (Math.random() - 0.5) * 8 
-            };
+            this.friction = 0.95; // Lực cản không khí giúp hạt chậm dần
+            this.gravity = 0.15;  // Trọng lực làm hạt rơi xuống
         }
+
         draw() {
             ctx.save();
             ctx.globalAlpha = this.alpha;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, 1, 0, Math.PI * 2);
             ctx.fillStyle = this.color;
+            // Tạo hiệu ứng phát sáng neon
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.color;
             ctx.fill();
             ctx.restore();
         }
+
         update() {
-            this.v.x *= this.friction;
-            this.v.y *= this.friction;
-            this.v.y += this.gravity;
-            this.x += this.v.x; this.y += this.v.y;
-            this.alpha -= 0.008;
+            this.velocity.x *= this.friction;
+            this.velocity.y *= this.friction;
+            this.velocity.y += this.gravity;
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+            this.alpha -= 0.005; // Giảm alpha chậm để giữ vệt sáng lâu hơn
         }
     }
 
@@ -124,44 +94,87 @@
         constructor() {
             this.x = Math.random() * canvas.width;
             this.y = canvas.height;
-            this.ty = Math.random() * (canvas.height / 2);
-            this.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+            this.targetY = Math.random() * (canvas.height / 2.5) + 50;
+            this.color = `hsl(${Math.random() * 360}, 100%, 70%)`;
+            this.velocity = { x: (Math.random() - 0.5) * 3, y: -12 };
             this.done = false;
-            this.pts = [];
+            this.particles = [];
         }
+
         update() {
             if (!this.done) {
-                this.y -= 3.5; 
-                if (this.y <= this.ty) {
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.velocity.y += 0.15; // Chậm dần khi lên cao
+
+                if (this.velocity.y >= 0 || this.y <= this.targetY) {
+                    this.explode();
                     this.done = true;
-                    for (let i = 0; i < 120; i++) this.pts.push(new Particle(this.x, this.y, this.color));
                 }
             }
-            this.pts.forEach((p, i) => {
-                p.update(); if (p.alpha <= 0) this.pts.splice(i, 1);
+
+            this.particles.forEach((p, i) => {
+                p.update();
+                if (p.alpha <= 0) this.particles.splice(i, 1);
             });
         }
+
+        explode() {
+            const count = 200; // Tăng số hạt để tạo hình tròn đặc
+            for (let i = 0; i < count; i++) {
+                // Thuật toán toán học để tạo nổ hình tròn đều
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 10; 
+                this.particles.push(new Particle(this.x, this.y, this.color, {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                }));
+            }
+        }
+
         draw() {
             if (!this.done) {
-                ctx.fillStyle = 'white';
-                ctx.fillRect(this.x, this.y, 1.5, 8);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = "white";
+                ctx.fill();
             }
-            this.pts.forEach(p => p.draw());
+            this.particles.forEach(p => p.draw());
         }
     }
 
+    // Quản lý chữ
+    const texts = ["Happy New Year 2025", "Chúc Mừng Năm Mới", "Dành Cho Anh Thư", "Vạn Sự Như Ý", "Luôn Luôn Vui Vẻ"];
+    let textIdx = 0;
+    const txtEl = document.getElementById('changing-text');
+
+    function changeText() {
+        txtEl.classList.remove('show');
+        setTimeout(() => {
+            txtEl.innerText = texts[textIdx];
+            txtEl.classList.add('show');
+            textIdx = (textIdx + 1) % texts.length;
+        }, 1000);
+    }
+    setInterval(changeText, 4000);
+    changeText();
+
     function loop() {
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        // Mẹo: dùng alpha 0.1 để tạo hiệu ứng vệt mờ (trails) phía sau hạt pháo
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if (Math.random() < 0.015) fw.push(new Firework());
+
+        if (Math.random() < 0.03) fw.push(new Firework());
+
         fw.forEach((f, i) => {
-            f.update(); f.draw();
-            if (f.done && f.pts.length === 0) fw.splice(i, 1);
+            f.update();
+            f.draw();
+            if (f.done && f.particles.length === 0) fw.splice(i, 1);
         });
+
         requestAnimationFrame(loop);
     }
     loop();
 </script>
 </body>
 </html>
-
