@@ -1,148 +1,113 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Pháo hoa Master</title>
+<title>Firework DevForum Style</title>
 <style>
 html,body{
-    margin:0;
-    padding:0;
-    background:black;
-    overflow:hidden;
+  margin:0;
+  background:#0b050f;
+  overflow:hidden;
 }
 canvas{display:block}
 </style>
 </head>
 <body>
-<canvas id="cv"></canvas>
-
-<audio id="boom" src="https://cdn.pixabay.com/audio/2022/03/15/audio_7cfa5a1c92.mp3"></audio>
+<canvas id="c"></canvas>
 
 <script>
-const c = document.getElementById("cv");
+const c = document.getElementById("c");
 const ctx = c.getContext("2d");
 c.width = innerWidth;
 c.height = innerHeight;
-onresize = ()=>{c.width=innerWidth;c.height=innerHeight};
+onresize=()=>{c.width=innerWidth;c.height=innerHeight};
 
-const gravity = 0.05;
-const boom = document.getElementById("boom");
-
-let fireworks=[], particles=[];
-
-class Firework{
-    constructor(x,targetY){
-        this.x=x;
-        this.y=c.height;
-        this.vy=-13-Math.random()*4;
-        this.targetY=targetY;
-        this.stage=0;
-        this.colorHue=Math.random()*360;
-        this.done=false;
-    }
-    update(){
-        this.y+=this.vy;
-        this.vy+=gravity*0.4;
-
-        // đổi màu khi bay
-        this.colorHue+=2;
-
-        if(this.y<=this.targetY && !this.done){
-            this.explode();
-            this.stage++;
-            if(this.stage<3){
-                this.targetY-=40+Math.random()*40;
-                this.vy=-6-Math.random()*3;
-            }else{
-                this.done=true;
-            }
-        }
-    }
-    draw(){
-        ctx.fillStyle=`hsl(${this.colorHue},100%,70%)`;
-        ctx.fillRect(this.x,this.y,2,2);
-    }
-    explode(){
-        boom.currentTime=0;
-        boom.play();
-        createBurst(this.x,this.y,this.stage,this.colorHue);
-    }
-}
+const GRAVITY = 0.03;
+let particles=[];
 
 class Particle{
-    constructor(x,y,vx,vy,hue,life){
-        this.x=x;this.y=y;
-        this.vx=vx;this.vy=vy;
-        this.hue=hue;
-        this.life=life;
-        this.alpha=1;
+  constructor(x,y,vx,vy,type,color){
+    this.x=x; this.y=y;
+    this.vx=vx; this.vy=vy;
+    this.life=1;
+    this.type=type;
+    this.color=color;
+    this.rot=Math.random()*Math.PI;
+  }
+  update(){
+    this.x+=this.vx;
+    this.y+=this.vy;
+    this.vy+=GRAVITY;
+    this.life-=0.01;
+    this.rot+=0.1;
+  }
+  draw(){
+    ctx.save();
+    ctx.globalAlpha=this.life;
+    ctx.shadowBlur=10;
+    ctx.shadowColor=this.color;
+    ctx.fillStyle=this.color;
+
+    if(this.type==="line"){
+      ctx.translate(this.x,this.y);
+      ctx.rotate(this.rot);
+      ctx.fillRect(-1,-6,2,12);
     }
-    update(){
-        this.x+=this.vx;
-        this.y+=this.vy;
-        this.vy+=gravity;
-        this.hue+=1.5; // đổi màu khi rơi
-        this.alpha-=this.life;
+    else if(this.type==="dot"){
+      ctx.beginPath();
+      ctx.arc(this.x,this.y,1.2,0,Math.PI*2);
+      ctx.fill();
     }
-    draw(){
-        ctx.save();
-        ctx.globalAlpha=this.alpha;
-        ctx.fillStyle=`hsl(${this.hue},100%,60%)`;
-        ctx.beginPath();
-        ctx.arc(this.x,this.y,2,0,Math.PI*2);
-        ctx.fill();
-        ctx.restore();
+    else if(this.type==="petal"){
+      ctx.translate(this.x,this.y);
+      ctx.rotate(this.rot);
+      ctx.fillRect(-1,-3,2,6);
     }
+
+    ctx.restore();
+  }
 }
 
-function createBurst(x,y,stage,hue){
-    let count = stage===0?80:stage===1?120:160;
-    let speed = stage===0?4:stage===1?5:6;
-
-    for(let i=0;i<count;i++){
-        let a=Math.random()*Math.PI*2;
-        let s=Math.random()*speed;
-        particles.push(new Particle(
-            x,y,
-            Math.cos(a)*s,
-            Math.sin(a)*s,
-            hue+Math.random()*40,
-            0.01
-        ));
-    }
+function explode(x,y,style){
+  let count= style==="dot"?800:200;
+  for(let i=0;i<count;i++){
+    let a=Math.random()*Math.PI*2;
+    let s=Math.random()*4+1;
+    particles.push(
+      new Particle(
+        x,y,
+        Math.cos(a)*s,
+        Math.sin(a)*s,
+        style,
+        style==="dot"?"gold":
+        style==="petal"?"hotpink":
+        "white"
+      )
+    );
+  }
 }
 
 function loop(){
-    ctx.fillStyle="rgba(0,0,0,0.25)";
-    ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle="rgba(0,0,0,0.2)";
+  ctx.fillRect(0,0,c.width,c.height);
 
-    fireworks.forEach((f,i)=>{
-        f.update();f.draw();
-        if(f.done) fireworks.splice(i,1);
-    });
+  particles.forEach((p,i)=>{
+    p.update();
+    p.draw();
+    if(p.life<=0) particles.splice(i,1);
+  });
 
-    particles.forEach((p,i)=>{
-        p.update();p.draw();
-        if(p.alpha<=0) particles.splice(i,1);
-    });
-
-    requestAnimationFrame(loop);
+  requestAnimationFrame(loop);
 }
 
-c.onclick = e=>{
-    fireworks.push(
-        new Firework(e.clientX, e.clientY)
-    );
-};
-
 setInterval(()=>{
-    fireworks.push(
-        new Firework(
-            Math.random()*c.width,
-            Math.random()*c.height/2
-        )
-    );
-},1300);
+  const styles=["line","dot","petal"];
+  explode(
+    Math.random()*c.width,
+    Math.random()*c.height/2,
+    styles[Math.floor(Math.random()*styles.length)]
+  );
+},1000);
 
 loop();
 </script>
